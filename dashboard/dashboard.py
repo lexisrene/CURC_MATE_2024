@@ -1,55 +1,73 @@
 import tkinter as tk
-import PIL
 from PIL import Image, ImageTk
 import countdown
 
-# Create the main window
-root = tk.Tk()
-root.title("CURC ROV 2024")
+class Dashboard:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("CURC ROV 2024")
 
-# Set the window to full screen
-root.attributes('-fullscreen', True)
-root.minsize(800, 500)
+        # Fullscreen settings
+        self.root.attributes('-fullscreen', True)
+        self.root.minsize(800, 500)
 
-# If you want to allow toggling fullscreen mode on and off with a key (e.g., F11)
+        # Bind keys for fullscreen toggle and quit
+        self.root.bind("<Escape>", self.end_fullscreen)
+        self.root.bind("<Control-c>", lambda event: self.root.quit())
 
-def end_fullscreen(event=None):
-    root.attributes("-fullscreen", False)
+        # Layout configuration
+        self.configure_layout()
 
-root.bind("<Escape>", end_fullscreen)
-root.bind("<Control-c>", lambda event: root.quit())
+        # Load and display logo
+        self.display_logo()
 
-window_width = root.winfo_width()
-window_height = root.winfo_height()
+        # Setup and display countdown widget
+        self.setup_countdown()
 
-root.columnconfigure(0, weight=1)
-root.columnconfigure(1, weight=15)
-root.rowconfigure(0, weight=1)
+    def configure_layout(self):
+        window_width = self.root.winfo_width()
 
-curc_logo_original = Image.open('images/curc_logo_color.png').convert('RGB').resize((90, 90))
-curc_logo = ImageTk.PhotoImage(curc_logo_original)
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=15)
+        self.root.rowconfigure(0, weight=1)
+
+        self.navBar = tk.Frame(self.root, background='#75aadb')
+        self.navBar.config(width=window_width * 0.1)
+        self.main = tk.Frame(self.root, background='white')
+
+        self.navBar.grid(row=0, column=0, sticky='nsew')
+        self.main.grid(row=0, column=1, sticky='nsew')
+
+        self.main.columnconfigure((0, 1, 2), weight=1)
+        self.main.rowconfigure((0, 1), weight=3)
+        self.main.rowconfigure(2, weight=1)
+
+    def display_logo(self):
+        curc_logo_original = Image.open('images/curc_logo_color.png').convert('RGB').resize((90, 90))
+        curc_logo = ImageTk.PhotoImage(curc_logo_original)
+
+        logo_label = tk.Label(self.navBar, image=curc_logo, background='#75aadb')
+        logo_label.image = curc_logo  # Keep a reference!
+        logo_label.pack(side='top', pady=20)
+
+    def setup_countdown(self):
+        countdown_frame = tk.Frame(self.main, background='white')
+        countdown_grid = tk.Frame(countdown_frame)
+        countdown_grid.columnconfigure((0, 1), weight=1)
+        countdown_grid.rowconfigure(0, weight=1)
+        countdown_grid.pack(side='top')
+
+        countdown_frame.grid(row=2, column=0, sticky=tk.SW, padx=40, pady=40)
+
+        self.countdown_widget = countdown.Countdown(countdown_grid, 15, 0)
+        start_btn = tk.Button(countdown_frame, text='START', bd='5', highlightbackground='white', command=lambda: self.countdown_widget.startCount(15*60))
+        start_btn.pack(side='top')
+
+    def end_fullscreen(self, event=None):
+        self.root.attributes("-fullscreen", False)
 
 
-navBar = tk.Frame(root, background='#75aadb')
-navBar.config(width=window_width * 0.1)
-main = tk.Frame(root, background='white')
-navBar.grid(row=0, column=0, sticky='nsew')
-main.grid(row=0, column=1, sticky='nsew')
-main.columnconfigure((0, 1, 2), weight=1)
-main.rowconfigure((0, 1), weight=3)
-main.rowconfigure(2, weight=1)
-
-logo_label = tk.Label(navBar, image=curc_logo, background='#75aadb')
-logo_label.pack(side='top', pady = 20)
-
-countdown_frame = tk.Frame(main, background='white')
-countdown_grid = tk.Frame(countdown_frame)
-countdown_grid.columnconfigure((0, 1), weight=1)
-countdown_grid.rowconfigure(0, weight=1)
-countdown_grid.pack(side='top')
-countdown_frame.grid(row = 2, column=0, sticky=tk.SW, padx = 40, pady = 40)
-countdown_widget = countdown.Countdown(countdown_grid, 15, 0)
-start_btn = tk.Button(countdown_frame, text='START', bd='5', highlightbackground='white', command=lambda: countdown_widget.startCount(15*60))
-start_btn.pack(side='top')
-
-root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Dashboard(root)
+    root.mainloop()
