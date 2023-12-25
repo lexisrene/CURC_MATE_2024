@@ -50,6 +50,24 @@ class Dashboard:
         logo_label.image = curc_logo  # Keep a reference!
         logo_label.pack(side='top', pady=20)
 
+    def display_navbar_buttons(self):
+        btn_one = tk.Button(self.navBar, text='One', bd='5', highlightbackground="#75aadb")
+        btn_one.pack(side='top', pady=(80, 30))
+        
+        btn_two = tk.Button(self.navBar, text='Two', bd='5', highlightbackground="#75aadb")
+        btn_two.pack(side='top', pady=30)
+        
+        btn_three = tk.Button(self.navBar, text='Three', bd='5', highlightbackground="#75aadb")
+        btn_three.pack(side='top', pady=30)
+        
+        btn_four = tk.Button(self.navBar, text='Four', bd='5', highlightbackground="#75aadb")
+        btn_four.pack(side='top', pady=30)
+        
+        btn_five = tk.Button(self.navBar, text='Five', bd='5', highlightbackground="#75aadb")
+        btn_five.pack(side='top', pady=30)
+
+
+    
     def setup_countdown(self):
         countdown_frame = tk.Frame(self.main, background='white')
         countdown_grid = tk.Frame(countdown_frame)
