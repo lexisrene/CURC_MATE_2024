@@ -21,6 +21,10 @@ class Dashboard:
         # Load and display logo
         self.display_logo()
 
+        # Buttons in navbar, right now just placeholders
+        # add functionality as you see fit
+        self.display_navbar_buttons()
+
         # Setup and display countdown widget
         self.setup_countdown()
 
