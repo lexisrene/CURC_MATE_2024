@@ -1,6 +1,11 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 import countdown
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import sys
+from depth_graphing import *
+
+
 
 class Dashboard:
     def __init__(self, root):
@@ -25,6 +30,8 @@ class Dashboard:
         # add functionality as you see fit
         self.display_navbar_buttons()
 
+        self.depth_graph()
+
         # Setup and display countdown widget
         self.setup_countdown()
 
@@ -47,7 +54,7 @@ class Dashboard:
         self.main.rowconfigure(2, weight=1)
 
     def display_logo(self):
-        curc_logo_original = Image.open('images/curc_logo_color.png').convert('RGB').resize((90, 90))
+        curc_logo_original = Image.open('/Users/ajung/Desktop/CURC_MATE_2024/dashboard/images/curc_logo_color.png').convert('RGB').resize((90, 90))
         curc_logo = ImageTk.PhotoImage(curc_logo_original)
 
         logo_label = tk.Label(self.navBar, image=curc_logo, background='#75aadb')
@@ -69,6 +76,15 @@ class Dashboard:
         
         btn_five = tk.Button(self.navBar, text='Five', bd='5', highlightbackground="#75aadb")
         btn_five.pack(side='top', pady=30)
+
+    def depth_graph(self):
+        test_string = "[31, 00:00:00, 0, 60, 00:00:05, 15, 60, 00:00:10, 30, 60, 00:00:15, 45, 60, 00:00:20, 60, 60, 00:00:25, 75, 60, 00:00:30, 90, 60, 00:00:35, 105, 60, 00:00:40, 120, 60]"
+        x_values, y_values = process(cleanup(test_string))
+        fig = create_plot(x_values, y_values)
+        self.canvas = FigureCanvasTkAgg(fig, master=self.main)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.grid(row=0, column=0, sticky='nw')
+        self.canvas.draw()
 
 
     
