@@ -2,7 +2,6 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import countdown
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import sys
 from depth_graphing import *
 
 
@@ -11,6 +10,13 @@ class Dashboard:
     def __init__(self, root):
         self.root = root
         self.root.title("CURC ROV 2024")
+        self.xvalues = []
+        self.yvalues = []
+        self.graph = depth_graphing()
+        self.graphs = []
+        self.data = []
+        self.graphToggle = 0
+        self.graphCount = 0
 
         # Fullscreen settings
         self.root.attributes('-fullscreen', True)
@@ -54,7 +60,7 @@ class Dashboard:
         self.main.rowconfigure(2, weight=1)
 
     def display_logo(self):
-        curc_logo_original = Image.open('/Users/ajung/Desktop/CURC_MATE_2024/dashboard/images/curc_logo_color.png').convert('RGB').resize((90, 90))
+        curc_logo_original = Image.open('images/curc_logo_color.png').convert('RGB').resize((90, 90))
         curc_logo = ImageTk.PhotoImage(curc_logo_original)
 
         logo_label = tk.Label(self.navBar, image=curc_logo, background='#75aadb')
@@ -79,12 +85,18 @@ class Dashboard:
 
     def depth_graph(self):
         test_string = "[31, 00:00:00, 0, 60, 00:00:05, 15, 60, 00:00:10, 30, 60, 00:00:15, 45, 60, 00:00:20, 60, 60, 00:00:25, 75, 60, 00:00:30, 90, 60, 00:00:35, 105, 60, 00:00:40, 120, 60]"
-        x_values, y_values = process(cleanup(test_string))
-        fig = create_plot(x_values, y_values)
-        self.canvas = FigureCanvasTkAgg(fig, master=self.main)
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.grid(row=0, column=0, sticky='nw')
-        self.canvas.draw()
+
+        # have .run return None if no data was received
+        # have it return a tuple of (fig, raw_data)
+        fig = self.graph.run()
+        if fig:
+            self.graphs.append(fig[0])
+            self.data.append(fig[1])
+        if len(self.graphs) > 0:
+            self.canvas = FigureCanvasTkAgg(self.graphs[self.graphToggle], master=self.main)
+            self.canvas_widget = self.canvas.get_tk_widget()
+            self.canvas_widget.grid(row=0, column=0, sticky='nw')
+            self.canvas.draw()
 
 
     
