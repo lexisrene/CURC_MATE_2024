@@ -3,6 +3,7 @@ from PIL import Image, ImageTk
 import countdown
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from depth_graphing import *
+import motor_status
 
 
 
@@ -40,6 +41,8 @@ class Dashboard:
 
         # Setup and display countdown widget
         self.setup_countdown()
+
+        self.motor_status()
 
     def configure_layout(self):
         window_width = self.root.winfo_width()
@@ -112,6 +115,19 @@ class Dashboard:
         self.countdown_widget = countdown.Countdown(countdown_grid, 15, 0)
         start_btn = tk.Button(countdown_frame, text='START', bd='5', highlightbackground='white', command=lambda: self.countdown_widget.startCount(15*60))
         start_btn.pack(side='top')
+
+    def motor_status(self):
+        # motor_frame = tk.Frame(self.main, background='black')
+        # motor_frame.pack()
+        # Create a canvas widget
+        canvas = tk.Canvas(self.main, width=200, height=200)
+        status = motor_status.Circles(canvas)
+        status.draw_blue_circles()
+
+        # Bind the canvas to the key press event
+        canvas.bind('<KeyPress>', status.on_key_press)
+
+        canvas.grid(row=0, column=0)
 
     def end_fullscreen(self, event=None):
         self.root.attributes("-fullscreen", False)
