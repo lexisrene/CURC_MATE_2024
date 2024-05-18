@@ -25,7 +25,7 @@ class Controller:
 		self.clock = pygame.time.Clock()
 
 		# setting up arduino object to send serial comms 
-		self.kit = ServoKit(channels=16)
+		self.kit = ServoKit(channels=16, address=0x40)
 		self.done = False
 
 		# mapping buttons for xbox x controller
@@ -35,20 +35,23 @@ class Controller:
 		self.RIGHT_VERT = 4
 
 		self.LEFT_BUMPER = 2
-		self.RIGHT_BUMPER = 5
+		self.RIGHT_BUMPER = 3
 
-		self.LEFT_TRIGGER = 4
+		self.LEFT_TRIGGER = 2
 		self.RIGHT_TRIGGER = 5
+		self.A= 0
+		self.B = 1   
 
 		# default value for when motor is off
-		self.STOP_VAL = "1500"
-		self.cur_grip = '90'
+		self.STOP_VAL = 0
+		self.pos = 0
+		self.light = 0
 
 		# initializing each of the motors
 		self.reset()
 
 		# array of values for the motor to be passed over to the arduinp
-		self.motor_arr = [self.MOTOR1, self.MOTOR2, self.MOTOR3, self.MOTOR4, self.MOTOR5, self.MOTOR6, self.cur_grip]
+		self.motor_arr = [self.MOTORAB, self.MOTORDF, self.MOTORC, self.MOTORE, self.cur_grip, self.pos, self.light]
 
 	def move(self):
 		while not self.done:
@@ -71,18 +74,19 @@ class Controller:
 			self.UD_axis = joy.get_axis(self.LEFT_VERT)
 			self.FB_axis = joy.get_axis(self.RIGHT_VERT)
 			self.rot = joy.get_axis(self.RIGHT_HORI)
-			self.strafeL = joy.get_axis(self.LEFT_BUMPER)
-			self.strafeR = joy.get_axis(self.RIGHT_BUMPER)
-			self.strafe = -self.strafeL + self.strafeR
+			self.open = joy.get_axis(self.LEFT_TRIGGER)
+			self.close = joy.get_axis(self.RIGHT_TRIGGER)
 
-		
-			self.grip_close = joy.get_button(self.RIGHT_TRIGGER)
-			self.grip_open = joy.get_button(self.LEFT_TRIGGER)
+
+			self.hori = joy.get_button(self.A)
+			self.vert = joy.get_button(self.B)
+			self.dim = joy.get_button(self.LEFT_BUMPER)
+			self.bright = joy.get_button(self.RIGHT_BUMPER)
 
 			# send axis positions to be evaluated for motor values
-			self.motor_vector(self.UD_axis, self.FB_axis, self.rot, self.strafe)
+			self.motor_vector(self.UD_axis, self.FB_axis, self.rot, self.open, self.close)
 
-			self.servos(self.grip_close, self.grip_open)
+			self.servos(self.hori, self.vert, self.dim, self.bright)
 
 			# sends values to the arduino 
 			self.send_ada(self.motor_arr)
@@ -95,87 +99,98 @@ class Controller:
 
 
 
-	def motor_vector(self, UP, FB, rot, strafe):
+	def motor_vector(self, UP, FB, rot,  open, close):
 		# if the left vertical axis is activated, map the value and send the same value to the up/down motors
 		if(UP > 0.1 or UP < -0.1):
-			UD_val = int(numpy.interp(UP, [-1,1], [1100, 1900]))
-			self.MOTOR1 = UD_val
-			self.MOTOR2 = UD_val
-			self.MOTOR3 = self.STOP_VAL
-			self.MOTOR4 = self.STOP_VAL
-			self.MOTOR5 = self.STOP_VAL
-			self.MOTOR6 = self.STOP_VAL
+			UD_val = (UP+1) /2 *(0.2 - (-0.2)) -0.2
+			FB_val = (FB+1) /2 *(0.4 - (-0.4)) -0.4
+			self.MOTORAB = UD_val 
+			self.MOTORDF = UD_val * 2.7
+			self.MOTORC = FB_val
+			self.MOTORE = FB_val
+
+			self.cur_grip = self.STOP_VAL
 
 		# if the right vert axis is activated, map the value and send the same value to all 4 horizontal motors
 		if(FB > 0.1 or FB < -0.1):
-			FB_val = int(numpy.interp(FB, [-1,1], [1100, 1900]))
+			UD_val = (UP+1) /2 *(0.2 - (-0.2)) -0.2
+			FB_val = (FB+1) /2 *(0.4 - (-0.4)) -0.4
 
-			self.MOTOR1 = self.STOP_VAL
-			self.MOTOR2 = self.STOP_VAL
-			self.MOTOR3 = FB_val
-			self.MOTOR4 = FB_val
-			self.MOTOR5 = FB_val
-			self.MOTOR6 = FB_val
+			self.MOTORAB = UD_val 
+			self.MOTORDF = UD_val * 2.7
+			self.MOTORC = FB_val
+			self.MOTORE = FB_val
 
-		# for yaw axis in vector drive, motors diagonal from each other thrust in the same direction
-		if(rot > 0.1 or rot < -0.1):
-			# to rotate with the right horizontal joystick axis, get two values that are opposite in direction by reversing the mapping
-			LR1_val = int(numpy.interp(rot, [-1,1], [1100, 1900]))
-			LR2_val = int(numpy.interp(rot, [-1,1], [1900, 1100]))
+			self.cur_grip = self.STOP_VAL
+		if(rot >0.1 or rot < -0.1):
+			UD_val = (UP+1) /2 *(0.2 - (-0.2)) -0.2
+			LR2_val = (rot + 1) / 2 * (0.2 - (-0.2)) - 0.2
+			LR1_val = -LR2_val
 
-			self.MOTOR1 = self.STOP_VAL
-			self.MOTOR2 = self.STOP_VAL
-			self.MOTOR3 = LR1_val
-			self.MOTOR4 = LR2_val
-			self.MOTOR5 = LR2_val
-			self.MOTOR6 = LR1_val
+			self.MOTORAB = UD_val
+			self.MOTORDF = UD_val
+			self.MOTORC = LR1_val
+			self.MOTORE = LR2_val
+
+			self.cur_grip = self.STOP_VAL
+		if(open >0.1 or close > 0.1):
+			claw = (close - open + 1) / 2 * (0.05 - (-0.05)) - 0.05
+
+			self.MOTORAB = self.STOP_VAL
+			self.MOTORDF = self.STOP_VAL
+			self.MOTORC = self.STOP_VAL
+			self.MOTORE = self.STOP_VAL
+			
+			self.cur_grip = claw
 
 			
-		# for strafing, motors on the left thrust in the same direction while motors on the right thrust in the opposite direction
-		if(strafe > 0.1 or strafe < -0.1):
-			LR1_val = int(numpy.interp(strafe, [-1,1], [1100, 1900]))
-			LR2_val = int(numpy.interp(strafe, [-1,1], [1900, 1100]))
-
-			self.MOTOR1 = self.STOP_VAL
-			self.MOTOR2 = self.STOP_VAL
-			self.MOTOR3 = LR1_val
-			self.MOTOR4 = LR2_val
-			self.MOTOR5 = LR1_val
-			self.MOTOR6 = LR2_val
+		
 
 		# continuously updates the motor values in the array
-		self.motor_arr = [self.MOTOR1, self.MOTOR2, self.MOTOR3, self.MOTOR4, self.MOTOR5, self.MOTOR6, self.cur_grip.rjust(3, '0')]
+		self.motor_arr = [self.MOTORAB, self.MOTORDF, self.MOTORC, self.MOTORE, self.cur_grip, self.pos, self.light]
 
-	def servos(self, grip_open, grip_close):
-		if(grip_close == 1):
-			self.cur_grip = '00'
-		if(grip_open == 1):
-			self.cur_grip = '180'
+	def servos(self, hori, vert, dim, bright):
+		if hori == 1:
+			self.pos = 180
+		if vert == 1:
+                    self.pos = 0
+		if dim == 1:
+                    self.light = 90
+		if bright == 1:
+                    self.light = 0
 
 
-
-		self.motor_arr = [self.MOTOR1, self.MOTOR2, self.MOTOR3, self.MOTOR4, self.MOTOR5, self.MOTOR6, self.cur_grip.rjust(3, '0')]
+		self.motor_arr = [self.MOTORAB, self.MOTORDF, self.MOTORC, self.MOTORE, self.cur_grip, self.pos, self.light]
 
 
 
 
 	def send_ada(self, values):
 		# converts motor value array to string to send to arduino
-		self.kit.continuous_servo[9].throttle = values[1]
-		self.kit.continuous_servo[10].throttle = values[2]
-		self.kit.continuous_servo[11].throttle = values[3]
-		self.kit.continuous_servo[12].throttle = values[4]
-		self.kit.continuous_servo[13].throttle = values[5]
-		self.kit.continuous_servo[8].throttle = values[0]
+		print(values)
+		# thrusters
+		self.kit.continuous_servo[2].throttle = values[0]
+		self.kit.continuous_servo[3].throttle = values[1]
+		self.kit.continuous_servo[4].throttle = values[2]
+		self.kit.continuous_servo[5].throttle = values[3]
+		# claw
+		self.kit.continuous_servo[1].throttle = values[4]		
+		# servo
+		self.kit.servo[0].set_pulse_width_range(min_pulse=500, max_pulse=2500)
+		self.kit.servo[0].angle = values[5]
+		self.kit.servo[6].set_pulse_width_range(min_pulse=1100, max_pulse=1900)
+		self.kit.servo[6].angle = values[6]
+
+
+
 
 	def reset(self):
 		#sets the motors to off position
-		self.MOTOR1 = self.STOP_VAL
-		self.MOTOR2 = self.STOP_VAL
-		self.MOTOR3 = self.STOP_VAL
-		self.MOTOR4 = self.STOP_VAL
-		self.MOTOR5 = self.STOP_VAL
-		self.MOTOR6 = self.STOP_VAL
+		self.MOTORAB = self.STOP_VAL
+		self.MOTORDF = self.STOP_VAL
+		self.MOTORC = self.STOP_VAL
+		self.MOTORE = self.STOP_VAL
+		self.cur_grip = self.STOP_VAL
 
 
 controller = Controller()
