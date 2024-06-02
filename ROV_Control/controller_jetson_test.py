@@ -7,12 +7,12 @@
 
 import pygame
 from pygame import *
-import numpy
+import os
 import serial
 from serial import Serial
 #from adafruit_servokit import ServoKit
 
-
+os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
 
 class Controller:
 
@@ -93,7 +93,7 @@ class Controller:
 			self.servos(self.hori, self.vert, self.dim, self.bright)
 
 			# sends values to the arduino 
-			self.send_ada(self.motor_arr)
+			#self.send_ada(self.motor_arr)
 
 
 
