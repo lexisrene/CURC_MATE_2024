@@ -10,7 +10,7 @@ from pygame import *
 import numpy
 import serial
 from serial import Serial
-from adafruit_servokit import ServoKit
+#from adafruit_servokit import ServoKit
 
 
 
@@ -25,19 +25,19 @@ class Controller:
 		self.clock = pygame.time.Clock()
 
 		# setting up arduino object to send serial comms 
-		self.kit = ServoKit(channels=16, address=0x40)
+		#self.kit = ServoKit(channels=16, address=0x40)
 		self.done = False
 
 		# mapping buttons for xbox x controller
 		self.LEFT_HORI = 0
-		self.RIGHT_HORI = 3
+		self.RIGHT_HORI = 2
 		self.LEFT_VERT = 1
-		self.RIGHT_VERT = 4
+		self.RIGHT_VERT = 3
 
 		self.LEFT_BUMPER = 2
 		self.RIGHT_BUMPER = 3
 
-		self.LEFT_TRIGGER = 2
+		self.LEFT_TRIGGER = 4
 		self.RIGHT_TRIGGER = 5
 		self.A= 0
 		self.B = 1   
@@ -66,25 +66,29 @@ class Controller:
 					self.done = True
 
 			# initialize joystick
-			joy = pygame.joystick.Joystick(0)
-			joy.init()
+			ROV_joy = pygame.joystick.Joystick(0)
+			CLAW_joy = pygame.joystick.Joystick(1)
+			ROV_joy.init()
+			CLAW_joy.init()
 
 
 			# set up axis responsible for up/down, fwd/bkwd, rotating, and strafing
-			self.UD_axis = joy.get_axis(self.LEFT_VERT)
-			self.FB_axis = joy.get_axis(self.RIGHT_VERT)
-			self.rot = joy.get_axis(self.RIGHT_HORI)
-			self.open = joy.get_axis(self.LEFT_TRIGGER)
-			self.close = joy.get_axis(self.RIGHT_TRIGGER)
+			self.UD_axis = ROV_joy.get_axis(self.LEFT_VERT)
+			self.FB_axis = ROV_joy.get_axis(self.RIGHT_VERT)
+			self.LEFT = ROV_joy.get_axis(self.LEFT_TRIGGER)
+			self.RIGHT = ROV_joy.get_axis(self.RIGHT_TRIGGER)
+
+			self.open = CLAW_joy.get_axis(self.LEFT_TRIGGER)
+			self.close = CLAW_joy.get_axis(self.RIGHT_TRIGGER)
 
 
-			self.hori = joy.get_button(self.A)
-			self.vert = joy.get_button(self.B)
-			self.dim = joy.get_button(self.LEFT_BUMPER)
-			self.bright = joy.get_button(self.RIGHT_BUMPER)
+			self.hori = CLAW_joy.get_button(self.A)
+			self.vert = CLAW_joy.get_button(self.B)
+			self.dim = CLAW_joy.get_button(self.LEFT_BUMPER)
+			self.bright = CLAW_joy.get_button(self.RIGHT_BUMPER)
 
 			# send axis positions to be evaluated for motor values
-			self.motor_vector(self.UD_axis, self.FB_axis, self.rot, self.open, self.close)
+			self.motor_vector(self.UD_axis, self.FB_axis, self.LEFT, self.RIGHT, self.open, self.close)
 
 			self.servos(self.hori, self.vert, self.dim, self.bright)
 
@@ -99,52 +103,19 @@ class Controller:
 
 
 
-	def motor_vector(self, UP, FB, rot,  open, close):
-		# if the left vertical axis is activated, map the value and send the same value to the up/down motors
-		if(UP > 0.1 or UP < -0.1):
-			UD_val = (UP+1) /2 *(0.2 - (-0.2)) -0.2
-			FB_val = (FB+1) /2 *(0.4 - (-0.4)) -0.4
-			self.MOTORAB = UD_val 
-			self.MOTORDF = UD_val * 2.7
-			self.MOTORC = FB_val
-			self.MOTORE = FB_val
+	def motor_vector(self, UP, FB, LEFT, RIGHT,  open, close):
+		UD_val = ((UP+1) /2 *(0.2 - (-0.2)) -0.2) if abs(UP) > 0.1 else 0
+		FB_val = ((FB+1) /2 *(0.4 - (-0.4)) -0.4) if abs(FB) > 0.1 else 0
+		LR2_val = ((LEFT - RIGHT + 1) / 2 * (0.2 - (-0.2)) - 0.2)
+		LR1_val = -LR2_val
+		claw = ((close - open + 1) / 2 * (0.05 - (-0.05)) - 0.05) if open > 0.1 or close > 0.1 else 0
 
-			self.cur_grip = self.STOP_VAL
+		self.MOTORAB = UD_val 
+		self.MOTORDF = UD_val * 2.7
+		self.MOTORC = FB_val if abs(FB_val) > abs(LR1_val) else LR1_val
+		self.MOTORE = FB_val if abs(FB_val) > abs(LR1_val) else LR2_val
 
-		# if the right vert axis is activated, map the value and send the same value to all 4 horizontal motors
-		if(FB > 0.1 or FB < -0.1):
-			UD_val = (UP+1) /2 *(0.2 - (-0.2)) -0.2
-			FB_val = (FB+1) /2 *(0.4 - (-0.4)) -0.4
-
-			self.MOTORAB = UD_val 
-			self.MOTORDF = UD_val * 2.7
-			self.MOTORC = FB_val
-			self.MOTORE = FB_val
-
-			self.cur_grip = self.STOP_VAL
-		if(rot >0.1 or rot < -0.1):
-			UD_val = (UP+1) /2 *(0.2 - (-0.2)) -0.2
-			LR2_val = (rot + 1) / 2 * (0.2 - (-0.2)) - 0.2
-			LR1_val = -LR2_val
-
-			self.MOTORAB = UD_val
-			self.MOTORDF = UD_val
-			self.MOTORC = LR1_val
-			self.MOTORE = LR2_val
-
-			self.cur_grip = self.STOP_VAL
-		if(open >0.1 or close > 0.1):
-			claw = (close - open + 1) / 2 * (0.05 - (-0.05)) - 0.05
-
-			self.MOTORAB = self.STOP_VAL
-			self.MOTORDF = self.STOP_VAL
-			self.MOTORC = self.STOP_VAL
-			self.MOTORE = self.STOP_VAL
-			
-			self.cur_grip = claw
-
-			
-		
+		self.cur_grip = claw
 
 		# continuously updates the motor values in the array
 		self.motor_arr = [self.MOTORAB, self.MOTORDF, self.MOTORC, self.MOTORE, self.cur_grip, self.pos, self.light]
@@ -153,12 +124,11 @@ class Controller:
 		if hori == 1:
 			self.pos = 180
 		if vert == 1:
-                    self.pos = 0
+					self.pos = 0
 		if dim == 1:
-                    self.light = 90
+					self.light = 90
 		if bright == 1:
-                    self.light = 0
-
+					self.light = 0
 
 		self.motor_arr = [self.MOTORAB, self.MOTORDF, self.MOTORC, self.MOTORE, self.cur_grip, self.pos, self.light]
 
